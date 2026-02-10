@@ -65,6 +65,20 @@ def setup():
         PolicyArn='arn:aws:iam::aws:policy/AmazonBedrockFullAccess'
     )
     
+    # Add inline policy for Lambda invocation
+    iam.put_role_policy(
+        RoleName=agent_role_name,
+        PolicyName='InvokeLambdaPolicy',
+        PolicyDocument=json.dumps({
+            "Version": "2012-10-17",
+            "Statement": [{
+                "Effect": "Allow",
+                "Action": ["lambda:InvokeFunction"],
+                "Resource": f"arn:aws:lambda:{region}:{account_id}:function:AgentCoreToolExecutor"
+            }]
+        })
+    )
+    
     # 4. Create Lambda execution role
     lambda_role_name = 'AgentCoreAutoDeployRole'
     lambda_trust_policy = {
@@ -92,12 +106,61 @@ def setup():
     policy = {
         "Version": "2012-10-17",
         "Statement": [
-            {"Effect": "Allow", "Action": ["bedrock:*"], "Resource": "*"},
-            {"Effect": "Allow", "Action": ["ecr:*"], "Resource": "*"},
-            {"Effect": "Allow", "Action": ["s3:*"], "Resource": [f"arn:aws:s3:::{bucket_name}*"]},
-            {"Effect": "Allow", "Action": ["lambda:*"], "Resource": "*"},
-            {"Effect": "Allow", "Action": ["iam:PassRole"], "Resource": agent_role_arn},
-            {"Effect": "Allow", "Action": ["logs:*"], "Resource": "*"}
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "bedrock:CreateAgent",
+                    "bedrock:CreateAgentActionGroup",
+                    "bedrock:PrepareAgent",
+                    "bedrock:GetAgent"
+                ],
+                "Resource": f"arn:aws:bedrock:{region}:{account_id}:agent/*"
+            },
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "ecr:DescribeImages",
+                    "ecr:DescribeRepositories",
+                    "ecr:GetAuthorizationToken"
+                ],
+                "Resource": "*"
+            },
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "lambda:UpdateFunctionCode",
+                    "lambda:UpdateFunctionConfiguration",
+                    "lambda:GetFunction"
+                ],
+                "Resource": f"arn:aws:lambda:{region}:{account_id}:function:AgentCoreToolExecutor"
+            },
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "s3:PutObject",
+                    "s3:GetObject"
+                ],
+                "Resource": f"arn:aws:s3:::{bucket_name}/*"
+            },
+            {
+                "Effect": "Allow",
+                "Action": ["iam:PassRole"],
+                "Resource": agent_role_arn,
+                "Condition": {
+                    "StringEquals": {
+                        "iam:PassedToService": "bedrock.amazonaws.com"
+                    }
+                }
+            },
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                ],
+                "Resource": f"arn:aws:logs:{region}:{account_id}:log-group:/aws/lambda/AgentCoreAutoDeployer:*"
+            }
         ]
     }
     
@@ -123,6 +186,24 @@ def setup():
     iam.attach_role_policy(
         RoleName=tool_role_name,
         PolicyArn='arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+    )
+    
+    # Add inline policy for CloudWatch Logs (more specific)
+    iam.put_role_policy(
+        RoleName=tool_role_name,
+        PolicyName='CloudWatchLogsPolicy',
+        PolicyDocument=json.dumps({
+            "Version": "2012-10-17",
+            "Statement": [{
+                "Effect": "Allow",
+                "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                ],
+                "Resource": f"arn:aws:logs:{region}:{account_id}:log-group:/aws/lambda/AgentCoreToolExecutor:*"
+            }]
+        })
     )
     
     # 6. Create auto-deploy Lambda
@@ -241,9 +322,37 @@ def setup():
         PolicyDocument=json.dumps({
             "Version": "2012-10-17",
             "Statement": [
-                {"Effect": "Allow", "Action": ["ecr:*"], "Resource": "*"},
-                {"Effect": "Allow", "Action": ["s3:*"], "Resource": "*"},
-                {"Effect": "Allow", "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"], "Resource": "*"}
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "ecr:GetAuthorizationToken",
+                        "ecr:BatchCheckLayerAvailability",
+                        "ecr:GetDownloadUrlForLayer",
+                        "ecr:BatchGetImage",
+                        "ecr:PutImage",
+                        "ecr:InitiateLayerUpload",
+                        "ecr:UploadLayerPart",
+                        "ecr:CompleteLayerUpload"
+                    ],
+                    "Resource": "*"
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "s3:GetObject",
+                        "s3:GetObjectVersion"
+                    ],
+                    "Resource": f"arn:aws:s3:::{bucket_name}/source.zip"
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "logs:CreateLogGroup",
+                        "logs:CreateLogStream",
+                        "logs:PutLogEvents"
+                    ],
+                    "Resource": f"arn:aws:logs:{region}:{account_id}:log-group:/aws/codebuild/agent-core-builder:*"
+                }
             ]
         })
     )

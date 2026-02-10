@@ -226,6 +226,38 @@ python3 deploy.py
 
 A new agent will be automatically created with your new tool!
 
+## 🔐 Security & IAM Permissions
+
+This system uses **least privilege IAM permissions**. See [IAM_PERMISSIONS.md](./IAM_PERMISSIONS.md) for detailed documentation.
+
+### IAM Roles Created
+
+1. **BedrockAgentCoreExecutionRole** - For Bedrock Agents
+   - Invoke foundation models
+   - Call Lambda functions (specific function only)
+
+2. **AgentCoreAutoDeployRole** - For auto-deploy Lambda
+   - Create Bedrock Agents
+   - Update Lambda functions
+   - Read ECR images
+   - Write to S3 (specific bucket only)
+   - PassRole (with condition)
+
+3. **AgentCoreToolExecutorRole** - For tool executor Lambda
+   - CloudWatch Logs only (specific log group)
+   - Add custom permissions for your tools
+
+4. **AgentCoreCodeBuildRole** - For CodeBuild
+   - Push to ECR
+   - Read from S3 (specific object only)
+   - CloudWatch Logs (specific log group)
+
+**All permissions are scoped to specific resources where possible.**
+
+See [IAM_PERMISSIONS.md](./IAM_PERMISSIONS.md) for complete policy documents and customization guide.
+
+---
+
 ## 📁 Files
 
 - `setup.py` - One-time infrastructure setup
