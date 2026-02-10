@@ -5,6 +5,7 @@ import boto3
 import zipfile
 from io import BytesIO
 import time
+import os
 
 def deploy():
     s3 = boto3.client('s3')
@@ -24,6 +25,8 @@ def deploy():
         zf.write('tool_executor.py')
         zf.write('Dockerfile')
         zf.write('buildspec.yml')
+        if os.path.exists('requirements.txt'):
+            zf.write('requirements.txt')
     
     s3.put_object(Bucket=bucket_name, Key='source.zip', Body=zip_buffer.getvalue())
     print("✓ Uploaded to S3")
