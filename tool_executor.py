@@ -34,6 +34,23 @@ def lambda_handler(event, context):
         b = float(params.get("b", 0))
         result = {"result": a + b}
     
+    elif tool_name == "get_time":
+        from datetime import datetime
+        import pytz
+        
+        timezone = params.get("timezone", "UTC")
+        try:
+            tz = pytz.timezone(timezone)
+            current_time = datetime.now(tz)
+            result = {
+                "time": current_time.strftime("%I:%M %p"),
+                "date": current_time.strftime("%Y-%m-%d"),
+                "timezone": timezone,
+                "day": current_time.strftime("%A")
+            }
+        except:
+            result = {"error": f"Invalid timezone: {timezone}"}
+    
     else:
         result = {"error": f"Unknown tool: {tool_name}"}
     

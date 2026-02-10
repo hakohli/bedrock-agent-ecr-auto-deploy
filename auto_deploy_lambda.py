@@ -112,6 +112,17 @@ def lambda_handler(event, context):
                             'required': True
                         }
                     }
+                },
+                {
+                    'name': 'get_time',
+                    'description': 'Get current time and date for a timezone',
+                    'parameters': {
+                        'timezone': {
+                            'type': 'string',
+                            'description': 'Timezone name (e.g., America/New_York, Europe/London, Asia/Tokyo)',
+                            'required': False
+                        }
+                    }
                 }
             ]
         }

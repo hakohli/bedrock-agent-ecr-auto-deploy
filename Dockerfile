@@ -1,5 +1,8 @@
 FROM public.ecr.aws/lambda/python:3.12
 
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
 COPY tool_executor.py ${LAMBDA_TASK_ROOT}/
 
 CMD ["tool_executor.lambda_handler"]
